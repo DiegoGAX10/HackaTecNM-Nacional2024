@@ -50,7 +50,7 @@ const StartScreen = ({ navigation }) => {
                 <TouchableOpacity
                     style={styles.button}
                     activeOpacity={0.8}
-                    onPress={() => navigation.navigate("Main")}
+                    onPress={() => navigation.navigate("Empecemos")}
                 >
                     <Text style={styles.buttonText}>INICIA</Text>
                 </TouchableOpacity>
@@ -62,7 +62,7 @@ const StartScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#151515',
+        backgroundColor: '#121212',
     },
     content: {
         flex: 1,

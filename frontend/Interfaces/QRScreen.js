@@ -5,33 +5,35 @@ import {
     TouchableOpacity,
     StyleSheet,
     Linking,
+    Alert,
     Platform,
-    Alert
 } from 'react-native';
 
 const QRScreen = () => {
     const openVortexApp = async () => {
-        // URL scheme para tu aplicación Vortex
-        const vortexAppScheme = 'vortex://';
+        // Reemplaza 'com.tuempresa.vortex' con el identificador de paquete real de tu aplicación de Unity
+        const vortexPackageName = 'com.UnityTechnologies.com.unity.template.urpblank';
 
         try {
-            // Verificar si la app Vortex está instalada
-            const supported = await Linking.canOpenURL(vortexAppScheme);
-
-            if (supported) {
-                await Linking.openURL(vortexAppScheme);
-            } else {
-                Alert.alert(
-                    'Aplicación no encontrada',
-                    'La aplicación Vortex no está instalada o no está configurada correctamente.',
-                    [{ text: 'OK' }]
-                );
+            // Para Android
+            if (Platform.OS === 'android') {
+                await Linking.canOpenURL(`${vortexPackageName}://`).then(supported => {
+                    if (supported) {
+                        Linking.openURL(`${vortexPackageName}://`);
+                    } else {
+                        Alert.alert(
+                            'Aplicación no encontrada',
+                            'No se puede encontrar la aplicación Vortex.',
+                            [{ text: 'OK' }]
+                        );
+                    }
+                });
             }
         } catch (error) {
-            console.error('Error al abrir Vortex:', error);
+            console.error('Error al abrir la aplicación:', error);
             Alert.alert(
                 'Error',
-                'No se pudo abrir la aplicación Vortex.',
+                'Ocurrió un problema al intentar abrir la aplicación.',
                 [{ text: 'OK' }]
             );
         }
@@ -39,7 +41,7 @@ const QRScreen = () => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Lanzador Vortex</Text>
+            <Text style={styles.title}>Abrir Vortex</Text>
             <TouchableOpacity
                 style={styles.button}
                 onPress={openVortexApp}
@@ -51,6 +53,7 @@ const QRScreen = () => {
     );
 };
 
+// Estilos permanecen igual que en tu código original
 const styles = StyleSheet.create({
     container: {
         flex: 1,

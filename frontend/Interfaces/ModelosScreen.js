@@ -1,158 +1,101 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, StatusBar, TextInput } from 'react-native';
-import { MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TextInput,
+    FlatList,
+    TouchableOpacity,
+    Dimensions,
+    StatusBar
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
-const CatalogoScreen = ({ navigation }) => {
-    const [selectedModel, setSelectedModel] = useState(null);
-    const [searchQuery, setSearchQuery] = useState('');
+const Modelos3DScreen = ({ navigation }) => {
+    // Datos originales y estado de búsqueda
+    const originalData = [
+        {
+            id: '1',
+            header: 'Modelo 1',
+            subhead: 'Codigo: MT-1232',
+            icon: 'desktop',
+            shapes: ['cube', 'layer-group', 'puzzle-piece']
+        },
+        {
+            id: '2',
+            header: 'Modelo 2',
+            subhead: 'Codigo: MT-8897',
+            icon: 'tv',
+            shapes: ['circle', 'square', 'triangle']
 
-    const modelData = {
-        "9700": {
-            year: "2020-2023",
-            engine: "D13K Euro 6",
-            specifications: {
-                potencia: "460 HP",
-                torque: "2300 Nm",
-                transmision: "I-Shift",
-                longitud: "13.8m"
-            },
-            parts: {
-                "Filtros": [
-                    { name: "Filtro de Aire", code: "FA-2234" },
-                    { name: "Filtro de Aceite", code: "FO-1123" },
-                    { name: "Filtro de Combustible", code: "FC-5567" }
-                ],
-                "Frenos": [
-                    { name: "Pastillas Delanteras", code: "PD-8876" },
-                    { name: "Pastillas Traseras", code: "PT-8877" },
-                    { name: "Disco de Freno", code: "DF-3344" }
-                ],
-                "Suspensión": [
-                    { name: "Amortiguadores Delanteros", code: "AD-4456" },
-                    { name: "Amortiguadores Traseros", code: "AT-4457" },
-                    { name: "Muelles", code: "MU-2231" }
-                ]
-            }
         },
-        "B11R": {
-            year: "2019-2023",
-            engine: "D11K Euro 6",
-            specifications: {
-                potencia: "430 HP",
-                torque: "2200 Nm",
-                transmision: "I-Shift",
-                longitud: "13.2m"
-            },
-            parts: {
-                "Filtros": [
-                    { name: "Filtro de Aire", code: "FA-2235" },
-                    { name: "Filtro de Aceite", code: "FO-1124" },
-                    { name: "Filtro de Combustible", code: "FC-5568" }
-                ],
-                "Frenos": [
-                    { name: "Pastillas Delanteras", code: "PD-8878" },
-                    { name: "Pastillas Traseras", code: "PT-8879" },
-                    { name: "Disco de Freno", code: "DF-3345" }
-                ],
-                "Suspensión": [
-                    { name: "Amortiguadores Delanteros", code: "AD-4458" },
-                    { name: "Amortiguadores Traseros", code: "AT-4459" },
-                    { name: "Muelles", code: "MU-2232" }
-                ]
-            }
+        {
+            id: '3',
+            header: 'Modelo 3',
+            subhead: 'Codigo: MT-7654',
+            icon: 'laptop',
+            shapes: ['circle', 'square', 'layer-group']
         },
-        "B8R": {
-            year: "2021-2023",
-            engine: "D8K Euro 6",
-            specifications: {
-                potencia: "350 HP",
-                torque: "1400 Nm",
-                transmision: "I-Shift",
-                longitud: "12.2m"
-            },
-            parts: {
-                "Filtros": [
-                    { name: "Filtro de Aire", code: "FA-2236" },
-                    { name: "Filtro de Aceite", code: "FO-1125" },
-                    { name: "Filtro de Combustible", code: "FC-5569" }
-                ],
-                "Frenos": [
-                    { name: "Pastillas Delanteras", code: "PD-8880" },
-                    { name: "Pastillas Traseras", code: "PT-8881" },
-                    { name: "Disco de Freno", code: "DF-3346" }
-                ],
-                "Suspensión": [
-                    { name: "Amortiguadores Delanteros", code: "AD-4460" },
-                    { name: "Amortiguadores Traseros", code: "AT-4461" },
-                    { name: "Muelles", code: "MU-2233" }
-                ]
-            }
-        },
-        "B7R": {
-            year: "2018-2023",
-            engine: "D7K Euro 5",
-            specifications: {
-                potencia: "290 HP",
-                torque: "1200 Nm",
-                transmision: "Manual 6 velocidades",
-                longitud: "11.5m"
-            },
-            parts: {
-                "Filtros": [
-                    { name: "Filtro de Aire", code: "FA-2237" },
-                    { name: "Filtro de Aceite", code: "FO-1126" },
-                    { name: "Filtro de Combustible", code: "FC-5570" }
-                ],
-                "Frenos": [
-                    { name: "Pastillas Delanteras", code: "PD-8882" },
-                    { name: "Pastillas Traseras", code: "PT-8883" },
-                    { name: "Disco de Freno", code: "DF-3347" }
-                ],
-                "Suspensión": [
-                    { name: "Amortiguadores Delanteros", code: "AD-4462" },
-                    { name: "Amortiguadores Traseros", code: "AT-4463" },
-                    { name: "Muelles", code: "MU-2234" }
-                ]
-            }
+    ];
+
+    const [filteredData, setFilteredData] = useState(originalData);
+    const [searchText, setSearchText] = useState('');
+
+    // Función para manejar la búsqueda
+    const handleSearch = (text) => {
+        setSearchText(text);
+        if (text === '') {
+            setFilteredData(originalData);
+        } else {
+            const filtered = originalData.filter((item) =>
+                item.header.toLowerCase().includes(text.toLowerCase()) ||
+                item.subhead.toLowerCase().includes(text.toLowerCase())
+            );
+            setFilteredData(filtered);
         }
     };
 
-    const filteredModels = Object.entries(modelData).filter(([modelName]) =>
-        modelName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const renderSpecifications = (specs) => {
-        return Object.entries(specs).map(([key, value]) => (
-            <View key={key} style={styles.specItem}>
-                <Text style={styles.specLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}:</Text>
-                <Text style={styles.specValue}>{value}</Text>
-            </View>
-        ));
-    };
-
-    const renderParts = (parts) => {
-        return Object.entries(parts).map(([category, items]) => (
-            <View key={category} style={styles.partsCategory}>
-                <Text style={styles.categoryTitle}>{category}</Text>
-                <View style={styles.partsGrid}>
-                    {items.map((part, index) => (
-                        <View key={index} style={styles.partItem}>
-                            <Text style={styles.partName}>{part.name}</Text>
-                            <Text style={styles.partCode}>{part.code}</Text>
-                        </View>
+    // Renderizador de elementos de la lista
+    const renderItem = ({ item }) => (
+        <TouchableOpacity
+            style={styles.card}
+            onPress={() => navigation.navigate("Xploit")}
+        >
+            <View style={styles.cardContent}>
+                <View style={styles.iconContainer}>
+                    <FontAwesome5
+                        name={item.icon}
+                        size={24}
+                        color="#1a237e"
+                    />
+                </View>
+                <View style={styles.textContent}>
+                    <Text style={styles.headerText}>{item.header}</Text>
+                    <Text style={styles.subheadText}>{item.subhead}</Text>
+                </View>
+                <View style={styles.shapePlaceholder}>
+                    {item.shapes.map((shape, index) => (
+                        <FontAwesome5
+                            key={index}
+                            name={shape}
+                            size={16}
+                            color="#666"
+                            style={styles.shapeIcon}
+                        />
                     ))}
                 </View>
             </View>
-        ));
-    };
+        </TouchableOpacity>
+    );
 
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
 
+            {/* Header con gradiente */}
             <LinearGradient
                 colors={['#1a237e', '#0d47a1']}
                 style={styles.header}
@@ -163,67 +106,47 @@ const CatalogoScreen = ({ navigation }) => {
                     onPress={() => navigation.goBack()}
                     style={styles.backButton}
                 >
-                    <MaterialIcons name="arrow-back" size={24} color="#fff" />
+                    <Ionicons name="arrow-back" size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Catálogo Volvo</Text>
-                <View style={styles.placeholder} />
+                <Text style={styles.title}>Mis Modelos 3D</Text>
+                <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={() => navigation.navigate("QR")}
+                >
+                    <MaterialIcons name="add" size={24} color="#fff" />
+                </TouchableOpacity>
             </LinearGradient>
 
+            {/* Barra de búsqueda */}
             <View style={styles.searchContainer}>
-                <MaterialIcons name="search" size={24} color="#666" />
+                <FontAwesome5
+                    name="search"
+                    size={18}
+                    color="#666"
+                    style={styles.searchIcon}
+                />
                 <TextInput
                     style={styles.searchInput}
-                    placeholder="Buscar modelo..."
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
+                    placeholder="Buscar modelos 3D"
+                    placeholderTextColor="#999"
+                    value={searchText}
+                    onChangeText={handleSearch}
                 />
             </View>
 
-            <ScrollView style={styles.content}>
-                {filteredModels.map(([modelName, data]) => (
-                    <TouchableOpacity
-                        key={modelName}
-                        style={[
-                            styles.modelCard,
-                            selectedModel === modelName && styles.modelCardSelected
-                        ]}
-                        onPress={() => setSelectedModel(modelName === selectedModel ? null : modelName)}
-                    >
-                        <View style={styles.modelHeader}>
-                            <View style={styles.modelTitleContainer}>
-                                <FontAwesome5 name="bus" size={24} color="#1a237e" />
-                                <View style={styles.modelInfo}>
-                                    <Text style={styles.modelName}>Volvo {modelName}</Text>
-                                    <Text style={styles.modelYear}>{data.year}</Text>
-                                </View>
-                            </View>
-                            <MaterialIcons
-                                name={selectedModel === modelName ? "expand-less" : "expand-more"}
-                                size={24}
-                                color="#1a237e"
-                            />
-                        </View>
-
-                        {selectedModel === modelName && (
-                            <View style={styles.modelDetails}>
-                                <View style={styles.engineInfo}>
-                                    <Text style={styles.engineTitle}>Motor: {data.engine}</Text>
-                                </View>
-
-                                <View style={styles.specsContainer}>
-                                    <Text style={styles.sectionTitle}>Especificaciones:</Text>
-                                    {renderSpecifications(data.specifications)}
-                                </View>
-
-                                <View style={styles.partsContainer}>
-                                    <Text style={styles.sectionTitle}>Catálogo de Piezas:</Text>
-                                    {renderParts(data.parts)}
-                                </View>
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
+            {/* Lista de modelos */}
+            <FlatList
+                data={filteredData}
+                renderItem={renderItem}
+                keyExtractor={(item) => item.id}
+                style={styles.list}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={() => (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.noResultsText}>No se encontraron modelos</Text>
+                    </View>
+                )}
+            />
         </View>
     );
 };
@@ -245,145 +168,99 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     title: {
-        fontSize: width * 0.06,
+        fontSize: width * 0.05,
         fontWeight: 'bold',
         color: '#fff',
     },
-    placeholder: {
-        width: 40,
+    addButton: {
+        padding: 8,
     },
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#fff',
+        borderRadius: 10,
         margin: width * 0.04,
-        padding: width * 0.03,
-        borderRadius: 12,
+        paddingHorizontal: width * 0.04,
         elevation: 2,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+    },
+    searchIcon: {
+        marginRight: width * 0.03,
     },
     searchInput: {
         flex: 1,
-        marginLeft: width * 0.02,
+        height: height * 0.06,
         fontSize: width * 0.04,
     },
-    content: {
+    list: {
         flex: 1,
-        padding: width * 0.04,
     },
-    modelCard: {
+    listContent: {
+        paddingHorizontal: width * 0.04,
+        paddingBottom: height * 0.02,
+    },
+    card: {
         backgroundColor: '#fff',
-        borderRadius: 12,
+        borderRadius: 15,
         marginBottom: height * 0.02,
-        elevation: 2,
+        elevation: 4,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowRadius: 8,
     },
-    modelCardSelected: {
-        borderColor: '#1a237e',
-        borderWidth: 2,
-    },
-    modelHeader: {
+    cardContent: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
         padding: width * 0.04,
     },
-    modelTitleContainer: {
-        flexDirection: 'row',
+    iconContainer: {
+        width: width * 0.12,
+        height: width * 0.12,
+        borderRadius: width * 0.06,
+        backgroundColor: '#e6e6e6',
+        justifyContent: 'center',
         alignItems: 'center',
+        marginRight: width * 0.04,
     },
-    modelInfo: {
-        marginLeft: width * 0.03,
+    textContent: {
+        flex: 1,
     },
-    modelName: {
+    headerText: {
         fontSize: width * 0.045,
         fontWeight: '600',
         color: '#1a237e',
+        marginBottom: height * 0.005,
     },
-    modelYear: {
+    subheadText: {
         fontSize: width * 0.035,
         color: '#666',
     },
-    modelDetails: {
-        padding: width * 0.04,
-        borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
-    },
-    engineInfo: {
-        backgroundColor: '#e3f2fd',
-        padding: width * 0.03,
-        borderRadius: 8,
-        marginBottom: height * 0.02,
-    },
-    engineTitle: {
-        fontSize: width * 0.04,
-        color: '#1a237e',
-        fontWeight: '500',
-    },
-    specsContainer: {
-        marginBottom: height * 0.02,
-    },
-    sectionTitle: {
-        fontSize: width * 0.04,
-        fontWeight: '600',
-        color: '#333',
-        marginBottom: height * 0.01,
-    },
-    specItem: {
+    shapePlaceholder: {
         flexDirection: 'row',
-        marginBottom: 4,
-    },
-    specLabel: {
-        fontSize: width * 0.035,
-        color: '#333',
-        fontWeight: '500',
-        width: width * 0.3,
-    },
-    specValue: {
-        fontSize: width * 0.035,
-        color: '#666',
-        flex: 1,
-    },
-    partsContainer: {
-        marginTop: height * 0.01,
-    },
-    partsCategory: {
-        marginBottom: height * 0.02,
-    },
-    categoryTitle: {
-        fontSize: width * 0.04,
-        color: '#1a237e',
-        fontWeight: '500',
-        marginBottom: height * 0.01,
-    },
-    partsGrid: {
-        backgroundColor: '#f8f9fa',
-        borderRadius: 8,
-        padding: width * 0.02,
-    },
-    partItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        padding: width * 0.02,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
     },
-    partName: {
-        fontSize: width * 0.035,
-        color: '#333',
+    shapeIcon: {
+        marginHorizontal: width * 0.01,
     },
-    partCode: {
-        fontSize: width * 0.035,
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: height * 0.2,
+    },
+    noResultsText: {
+        fontSize: width * 0.04,
         color: '#666',
-        fontWeight: '500',
+        textAlign: 'center',
     },
 });
 
-export default CatalogoScreen;
+export default Modelos3DScreen;

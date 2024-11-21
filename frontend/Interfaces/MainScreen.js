@@ -123,15 +123,18 @@ const MainScreen = ({ navigation }) => {
                     icon="layer-group"
                     title="Todos los Modelos"
                     type="FontAwesome5"
+                    onPress={() => navigation.navigate("Catalogo")}
                 />
                 <MenuItem
                     icon="puzzle-piece"
                     title="Compatibilidad"
                     type="FontAwesome5"
+                    onPress={() => navigation.navigate("Compatibilidad")}
                 />
                 <MenuItem
                     icon="settings-outline"
                     title="Configuración"
+                    onPress={() => navigation.navigate("Configuracion")}
                 />
                 <View style={styles.menuDivider} />
                 <MenuItem
@@ -154,7 +157,8 @@ const MainScreen = ({ navigation }) => {
                         <Text style={styles.cardSubtitle}>Gestiona tus modelos 3D</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.card}>
+                    <TouchableOpacity style={styles.card}
+                    onPress={() => navigation.navigate("Catalogo")}>
                         <FontAwesome5 name="layer-group" size={32} color="#1a237e" />
                         <Text style={styles.cardTitle}>Catálogo</Text>
                         <Text style={styles.cardSubtitle}>Explora todos los modelos</Text>
