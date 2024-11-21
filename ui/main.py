@@ -1,11 +1,15 @@
 import dash
-from dash import dcc, html, Input, Output, State, callback_context
+from dash import dcc, html, Input, Output, State
 import plotly.graph_objects as go
 import trimesh
 import json
 import numpy as np
-import base64
-import io
+from firebase_admin import firestore
+
+from utils.FirebaseAppSingleton import FirebaseAppSingleton
+
+# Simulated preconfigured model data
+PRECONFIGURED_MODEL_PATH = 'HACKATHON.1_AllCATPart.stl'
 
 # Colors for pieces
 colores = [
@@ -14,73 +18,45 @@ colores = [
     '#55E6C1', '#5F27CD', '#48DBFB', '#FF6B6B'
 ]
 
-# Initial configuration
+# Directions for piece placement
 direcciones = ['de abajo hacia arriba', 'de derecha a izquierda', 'de izquierda a derecha', 'de arriba hacia abajo']
 
-
-# Function to load STL from bytes
-def load_stl_from_bytes(contents):
+def load_preconfigured_model():
+    """Load a preconfigured STL model for demonstration"""
     try:
-        content_type, content_string = contents.split(',')
-        decoded = base64.b64decode(content_string)
-
-        # Verificar tamaño del archivo
-        print(f"Tamaño del archivo decodificado: {len(decoded)} bytes")
-
-        mesh = trimesh.load_mesh(io.BytesIO(decoded), file_type='stl')
-
-        # Verificar mesh
-        print(f"Número de vértices: {len(mesh.vertices)}")
-        print(f"Número de caras: {len(mesh.faces)}")
-
-        return mesh
+        # Replace this with your actual preconfigured model loading logic
+        mesh = trimesh.load_mesh(PRECONFIGURED_MODEL_PATH)
+        componentes = mesh.split()
+        return componentes
     except Exception as e:
-        print(f"Error detallado al cargar STL: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Error loading preconfigured model: {e}")
         return None
 
-
-# Create initial figure
 def crear_figura(componentes, selected_piece=None, current_camera=None):
+    """Create 3D visualization figure"""
     if not componentes:
-        print("No hay componentes para crear la figura")
         return go.Figure()
 
     fig = go.Figure()
 
     for idx, componente in enumerate(componentes):
-        try:
-            # Verificar datos del componente
-            print(f"Componente {idx}: {len(componente.vertices)} vértices, {len(componente.faces)} caras")
+        x = componente.vertices[:, 0]
+        y = componente.vertices[:, 1]
+        z = componente.vertices[:, 2]
 
-            pieza_config = {
-                'color': colores[idx % len(colores)],
-                'habilitado': True
-            }
+        mesh = go.Mesh3d(
+            x=x,
+            y=y,
+            z=z,
+            i=componente.faces[:, 0],
+            j=componente.faces[:, 1],
+            k=componente.faces[:, 2],
+            color=colores[idx % len(colores)],
+            opacity=0.7 if selected_piece is not None and idx != selected_piece else 1.0,
+            name=f'Piece {idx}'
+        )
 
-            # Create mesh for each component
-            x = componente.vertices[:, 0]
-            y = componente.vertices[:, 1]
-            z = componente.vertices[:, 2]
-
-            # Use Plotly's Mesh3d for 3D visualization
-            mesh = go.Mesh3d(
-                x=x,
-                y=y,
-                z=z,
-                i=componente.faces[:, 0],
-                j=componente.faces[:, 1],
-                k=componente.faces[:, 2],
-                color=pieza_config['color'],
-                opacity=0.7 if selected_piece is not None and idx != selected_piece else 1.0,
-                name=f'Piece {idx}'
-            )
-
-            fig.add_trace(mesh)
-
-        except Exception as e:
-            print(f"Error procesando componente {idx}: {e}")
+        fig.add_trace(mesh)
 
     # Configure layout
     fig.update_layout(
@@ -95,337 +71,313 @@ def crear_figura(componentes, selected_piece=None, current_camera=None):
         showlegend=True,
         margin=dict(l=0, r=0, t=0, b=0)
     )
+    for idx, componente in enumerate(componentes):
+        mesh = go.Mesh3d(
+            # ... otros parámetros existentes
+            opacity=0.7 if selected_piece is not None and idx != selected_piece else 1.0,
+        )
 
     return fig
+
 # Create Dash app
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 
-# Application layout
-app.layout = html.Div([
-    html.H1("Reconstrucción de Modelo 3D Interactivo"),
-    dcc.Upload(
-        id='upload-stl',
-        children=html.Div([
-            'Arrastra y suelta o ',
-            html.A('Selecciona un archivo STL')
+# Application layout with simulated upload
+# Professional Color Palette
+COLORS = {
+    'primary': '#3498db',     # Soft Blue
+    'secondary': '#2ecc71',   # Emerald Green
+    'background': '#f5f5f5',  # Light Gray
+    'text': '#2c3e50',        # Dark Blue-Gray
+    'accent': '#e74c3c'       # Soft Red
+}
+
+# Updated Google Fonts import and styling
+app.layout = html.Div(style={
+    'fontFamily': 'Inter, sans-serif',
+    'backgroundColor': COLORS['background'],
+    'color': COLORS['text']
+}, children=[
+        html.Div(id='upload-simulation-container', children=[
+            html.H1(
+                "3D Model Reconstruction",
+                style={
+                    'textAlign': 'center',
+                    'color': COLORS['primary'],
+                    'fontWeight': '600',
+                    'marginBottom': '30px'
+                }
+            ),
+            html.Div(id='upload-overlay', style={
+                'position': 'fixed',
+                'top': '0',
+                'left': '0',
+                'width': '100%',
+                'height': '100%',
+                'backgroundColor': 'rgba(0,0,0,0.6)',
+                'display': 'flex',
+                'justifyContent': 'center',
+                'alignItems': 'center',
+                'zIndex': '1000'
+            }, children=[
+                html.Div(style={
+                    'backgroundColor': 'white',
+                    'padding': '40px',
+                    'borderRadius': '15px',
+                    'boxShadow': '0 10px 25px rgba(0,0,0,0.1)',
+                    'textAlign': 'center',
+                    'maxWidth': '500px',
+                    'width': '100%'
+                }, children=[
+                    html.H2(
+                        "Select Your Model",
+                        style={
+                            'color': COLORS['text'],
+                            'marginBottom': '20px',
+                            'fontWeight': '600'
+                        }
+                    ),
+                    dcc.Loading(
+                        id="loading-simulation",
+                        type="circle",
+                        children=[html.Div(id='loading-output')]
+                    )
+                ])
+            ])
         ]),
-        style={
-            'width': '100%',
-            'height': '60px',
-            'lineHeight': '60px',
-            'borderWidth': '1px',
-            'borderStyle': 'dashed',
-            'borderRadius': '5px',
-            'textAlign': 'center',
-            'margin': '10px'
-        },
-        multiple=False
-    ),
-    html.Div(id='output-stl-upload'),
-    dcc.Store(id='camera-state-store', data=None),
-    html.Div(id='modelo-3d-container', children=[
-        dcc.Graph(
-            id='modelo-3d',
-            figure=go.Figure(),  # Empty initial figure
-            style={'height': '600px'},
-            config={'displayModeBar': True, 'scrollZoom': True}
-        )
-    ]),
 
-    # Configuration Panel
-    html.Div([
-        html.H3("Configuración de Piezas"),
-        dcc.Dropdown(
-            id='dropdown-pieza',
-            options=[],
-            value=None,
-            style={'width': '200px', 'marginBottom': '20px'}
-        ),
-        html.Div([
-            html.Label('Dirección'),
-            dcc.Dropdown(
-                id='direccion-pieza',
-                options=[{'label': direccion, 'value': direccion} for direccion in direcciones],
-                value=None,
-                style={'width': '200px', 'marginBottom': '20px'}
-            ),
-            html.Label('Prioridad'),
-            dcc.Input(
-                id='prioridad-pieza',
-                type='number',
-                value=None,
-                style={'width': '200px', 'marginBottom': '20px'}
-            ),
-            html.Div(id='texto-modificado', children=''),
-            html.Button(
-                'Guardar Configuración',
-                id='guardar-configuracion',
+        # Main model page (initially hidden)
+        html.Div(id='modelo-page', style={'display': 'none', 'padding': '20px'}, children=[
+            html.H1(
+                "Interactive 3D Model Reconstruction",
                 style={
-                    'marginTop': '10px',
-                    'padding': '10px',
-                    'backgroundColor': '#4CAF50',
-                    'color': 'white',
-                    'border': 'none',
-                    'borderRadius': '5px',
-                    'cursor': 'pointer'
+                    'textAlign': 'center',
+                    'color': COLORS['primary'],
+                    'fontWeight': '600',
+                    'marginBottom': '30px'
                 }
             ),
-            html.Button(
-                'Ocultar/Mostrar Pieza',
-                id='toggle-pieza',
-                style={
-                    'marginTop': '10px',
-                    'padding': '10px',
-                    'backgroundColor': '#FF9800',
-                    'color': 'white',
-                    'border': 'none',
-                    'borderRadius': '5px',
-                    'cursor': 'pointer'
-                }
+            dcc.Store(id='camera-state-store', data=None),
+            html.Div(id='modelo-3d-container', style={'boxShadow': '0 5px 15px rgba(0,0,0,0.1)'}, children=[
+                dcc.Graph(
+                    id='modelo-3d',
+                    figure=go.Figure(),
+                    style={'height': '600px'},
+                    config={'displayModeBar': True, 'scrollZoom': True}
+                )
+            ]),
+
+            # Configuration Panel with Modern Styling
+            html.Div([
+                html.H3(
+                    "Piece Configuration",
+                    style={
+                        'color': COLORS['text'],
+                        'fontWeight': '600',
+                        'borderBottom': f'2px solid {COLORS["primary"]}',
+                        'paddingBottom': '10px'
+                    }
+                ),
+                dcc.Dropdown(
+                    id='dropdown-pieza',
+                    options=[],
+                    value=None,
+                    placeholder='Select Piece',
+                    style={
+                        'width': '100%',
+                        'marginBottom': '20px',
+                        'borderRadius': '8px'
+                    }
+                ),
+                html.Div([
+                    html.Label('Direction', style={'fontWeight': '500', 'color': COLORS['text']}),
+                    dcc.Dropdown(
+                        id='direccion-pieza',
+                        options=[{'label': direccion, 'value': direccion} for direccion in direcciones],
+                        value=None,
+                        placeholder='Select Direction',
+                        style={
+                            'width': '100%',
+                            'marginBottom': '20px',
+                            'borderRadius': '8px'
+                        }
+                    ),
+                    html.Label('Priority', style={'fontWeight': '500', 'color': COLORS['text']}),
+                    dcc.Input(
+                        id='prioridad-pieza',
+                        type='number',
+                        placeholder='Enter Priority',
+                        style={
+                            'width': '100%',
+                            'marginBottom': '20px',
+                            'borderRadius': '8px',
+                            'border': f'1px solid {COLORS["primary"]}',
+                            'padding': '10px'
+                        }
+                    ),
+                    html.Div(id='texto-modificado', style={'color': COLORS['secondary'], 'marginBottom': '15px'}),
+
+                    html.Label('Help Text', style={'fontWeight': '500', 'color': COLORS['text'], 'marginTop': '20px'}),
+                    dcc.Textarea(
+                        id='ayuda-pieza',
+                        placeholder='Write a note or warning about this piece...',
+                        style={
+                            'width': '100%',
+                            'height': 100,
+                            'marginBottom': '20px',
+                            'borderRadius': '8px',
+                            'border': f'1px solid {COLORS["primary"]}',
+                            'padding': '10px'
+                        }
+                    ),
+                    html.Button(
+                        'Save Configuration',
+                        id='guardar-configuracion',
+                        style={
+                            'width': '100%',
+                            'padding': '12px',
+                            'backgroundColor': COLORS['primary'],
+                            'color': 'white',
+                            'border': 'none',
+                            'borderRadius': '8px',
+                            'fontWeight': '600',
+                            'transition': 'background-color 0.3s ease',
+                            'cursor': 'pointer'
+                        },
+                        n_clicks=0
+                    ),
+                ], style={
+                    'backgroundColor': 'white',
+                    'padding': '25px',
+                    'borderRadius': '12px',
+                    'boxShadow': '0 5px 15px rgba(0,0,0,0.1)'
+                })
+            ], style={'maxWidth': '600px', 'margin': '30px auto'}),
+
+            # JSON Export Button with Modern Styling
+            html.Div(
+                html.Button(
+                    "Generate Unity JSON",
+                    id='generar-json',
+                    style={
+                        'width': '250px',
+                        'padding': '12px',
+                        'backgroundColor': COLORS['secondary'],
+                        'color': 'white',
+                        'border': 'none',
+                        'borderRadius': '8px',
+                        'fontWeight': '600',
+                        'transition': 'background-color 0.3s ease',
+                        'cursor': 'pointer',
+                        'margin': '20px auto',
+                        'display': 'block'
+                    }
+                ),
+                style={'textAlign': 'center'}
             ),
-            html.Label('\nTexto de Ayuda'),
-            dcc.Textarea(
-                id='ayuda-pieza',
-                placeholder='Escribe una nota o advertencia sobre esta pieza...',
-                value='',
-                style={
-                    'width': '100%',
-                    'height': 100,
-                    'marginBottom': '20px'
-                }
-            ),
-        ], id='panel-pieza', style={'padding': '20px', 'backgroundColor': '#f4f4f4', 'borderRadius': '5px'})
-    ]),
+            dcc.Store(id='stl-components-store'),
+            dcc.Store(id='pieza-seleccionada-store', data=None),
+            dcc.Store(id='configuracion-store', data=None),
+            dcc.Download(id="download-json")
+        ])
+    ])
 
-    # JSON Export Button
-    html.Button(
-        "Generar JSON para Unity",
-        id='generar-json',
-        style={
-            'marginTop': '20px',
-            'padding': '10px',
-            'backgroundColor': '#FFC107',
-            'color': 'white',
-            'border': 'none',
-            'borderRadius': '5px',
-            'cursor': 'pointer'
-        }
-    ),
-    dcc.Store(id='stl-components-store'),
-    dcc.Store(id='pieza-seleccionada-store', data=None),
-    dcc.Store(id='configuracion-store', data=None),
-    dcc.Download(id="download-json")
-], className='container')
-
-
-# Callback to handle STL upload
 @app.callback(
-    [Output('stl-components-store', 'data'),
-     Output('output-stl-upload', 'children'),
+    [Output('upload-simulation-container', 'style'),
+     Output('modelo-page', 'style'),
      Output('modelo-3d', 'figure'),
      Output('dropdown-pieza', 'options')],
-    [Input('upload-stl', 'contents')],
-    [State('upload-stl', 'filename')],
+    [Input('loading-output', 'children')],
     prevent_initial_call=True
 )
-def update_stl_model(contents, filename):
-    if contents is not None:
-        try:
-            mesh = load_stl_from_bytes(contents)
+def simular_carga_modelo(dummy):
+    # Load preconfigured model
+    componentes = load_preconfigured_model()
 
-            if mesh is not None:
-                componentes = mesh.split()
-                if not componentes:
-                    return (
-                        None,
-                        html.Div('El archivo STL no pudo ser dividido en componentes'),
-                        go.Figure(),
-                        []
-                    )
+    if componentes:
+        # Create figure
+        figura = crear_figura(componentes)
 
-                # Generate piece configuration
-                configuracion_piezas = [
-                    {
-                        'id': i,
-                        'direccion': 'de abajo hacia arriba',
-                        'prioridad': i,
-                        'habilitado': True,
-                        'color': colores[i % len(colores)],
-                        'coordenadas_finales': {
-                            'x': componente.vertices[:, 0].tolist(),
-                            'y': componente.vertices[:, 1].tolist(),
-                            'z': componente.vertices[:, 2].tolist(),
-                            'rotacion_x': 0,
-                            'rotacion_y': 0,
-                            'rotacion_z': 0
-                        },
-                        'ayuda': ''
-                    } for i, componente in enumerate(componentes)
-                ]
+        # Create piece dropdown options
+        piece_options = [{'label': f'Pieza {i + 1}', 'value': i} for i in range(len(componentes))]
 
-                # Create initial figure
-                figura = crear_figura(componentes)
+        return (
+            {'display': 'none'},  # Hide upload simulation
+            {'display': 'block'},  # Show model page
+            figura,
+            piece_options
+        )
 
-                # Piece dropdown options
-                piece_options = [{'label': f'Pieza {i + 1}', 'value': i} for i in range(len(componentes))]
-
-                return (
-                    json.dumps([comp.vertices.tolist() for comp in componentes]),
-                    html.Div(f'Archivo {filename} cargado: {len(componentes)} componentes'),
-                    figura,
-                    piece_options
-                )
-
-        except Exception as e:
-            return None, html.Div(f'Error al procesar: {str(e)}'), go.Figure(), []
-
-    return None, html.Div('Por favor carga un archivo STL'), go.Figure(), []
-
-
-# Main piece configuration callback
-@app.callback(
-    [Output('direccion-pieza', 'value', {'allow_duplicate': True}),
-     Output('prioridad-pieza', 'value', {'allow_duplicate': True}),
-     Output('ayuda-pieza', 'value', {'allow_duplicate': True}),
-     Output('texto-modificado', 'children', {'allow_duplicate': True}),
-     Output('configuracion-store', 'data', {'allow_duplicate': True}),
-     Output('modelo-3d', 'figure', {'allow_duplicate': True}),
-     Output('dropdown-pieza', 'value', {'allow_duplicate': True}),
-     Output('camera-state-store', 'data', {'allow_duplicate': True})],
-    [Input('dropdown-pieza', 'value'),
-     Input('direccion-pieza', 'value'),
-     Input('prioridad-pieza', 'value'),
-     Input('ayuda-pieza', 'value'),
-     Input('guardar-configuracion', 'n_clicks'),
-     Input('toggle-pieza', 'n_clicks'),
-     Input('modelo-3d', 'clickData'),
-     Input('modelo-3d', 'relayoutData')],
-    [State('configuracion-store', 'data'),
-     State('dropdown-pieza', 'value'),
-     State('modelo-3d', 'figure'),
-     State('camera-state-store', 'data'),
-     State('stl-components-store', 'data')],
-    prevent_initial_call=True,
-    allow_duplicate=True  # Añadir esta línea
-)
-def actualizar_panel_pieza(pieza_seleccionada, nueva_direccion, nueva_prioridad, nueva_ayuda,
-                           guardar_clicks, toggle_clicks, click_data,
-                           relayout_data, config_data, current_piece,
-                           current_figure, stored_camera, stl_components_data):
-    # Si no hay componentes cargados, no hacer nada
-    if not stl_components_data:
-        return dash.no_update
-
-    # Cargar componentes
-    componentes_vertices = json.loads(stl_components_data)
-    componentes = [
-        trimesh.Trimesh(vertices=np.array(comp_vertices))
-        for comp_vertices in componentes_vertices
-    ]
-
-    ctx = callback_context
-    trigger = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
-
-    # Determine camera state
-    if trigger == 'modelo-3d' and relayout_data and 'scene.camera' in relayout_data:
-        current_camera = relayout_data['scene.camera']
-    else:
-        # Use stored or default camera
-        current_camera = stored_camera or {
-            'up': {'x': 0, 'y': 1, 'z': 0},
-            'center': {'x': 0, 'y': 0, 'z': 0},
-            'eye': {'x': 1.5, 'y': 1.5, 'z': 1.5}
-        }
-
-    # Load current configuration
-    configuracion = json.loads(config_data) if config_data else None
-
-    if not configuracion:
-        configuracion = [
-            {
-                'id': i,
-                'direccion': 'de abajo hacia arriba',
-                'prioridad': i,
-                'habilitado': True,
-                'color': colores[i % len(colores)],
-                'coordenadas_finales': {
-                    'x': componente.vertices[:, 0].tolist(),
-                    'y': componente.vertices[:, 1].tolist(),
-                    'z': componente.vertices[:, 2].tolist(),
-                    'rotacion_x': 0,
-                    'rotacion_y': 0,
-                    'rotacion_z': 0
-                },
-                'ayuda': ''
-            } for i, componente in enumerate(componentes)
-        ]
-
-    # Logic to select piece based on click
-    if trigger == 'modelo-3d' and click_data:
-        try:
-            trace_name = click_data['points'][0]['curveNumber']
-            pieza_seleccionada = trace_name
-        except (KeyError, IndexError, ValueError):
-            pieza_seleccionada = 0
-
-    # Default piece selection
-    if pieza_seleccionada is None:
-        pieza_seleccionada = current_piece or 0
-
-    # Get selected piece configuration
-    pieza = configuracion[pieza_seleccionada]
-
-    # Set default values
-    if nueva_direccion is None:
-        nueva_direccion = pieza.get('direccion', direcciones[0])
-
-    # Always set priority to piece ID
-    nueva_prioridad = nueva_prioridad if nueva_prioridad is not None else pieza.get('prioridad', pieza['id'])
-
-    pieza['prioridad'] = nueva_prioridad
-
-    # Toggle piece visibility
-    if trigger == 'toggle-pieza' and toggle_clicks:
-        pieza['habilitado'] = not pieza.get('habilitado', True)
-        configuracion[pieza_seleccionada] = pieza
-        texto_modificado = f"*Pieza {pieza_seleccionada + 1} {'oculta' if not pieza['habilitado'] else 'visible'}"
-
-    # Save configuration
-    elif trigger == 'guardar-configuracion' and guardar_clicks:
-        pieza_modificada = False
-
-        # Update direction if changed
-        if pieza['direccion'] != nueva_direccion:
-            pieza['direccion'] = nueva_direccion
-            pieza_modificada = True
-
-        if pieza['prioridad'] != nueva_prioridad:
-            pieza['prioridad'] = nueva_prioridad
-            pieza_modificada = True
-
-        texto_modificado = f"*Pieza {pieza_seleccionada + 1} modificada" if pieza_modificada else ''
-
-        # Update global configuration
-        configuracion[pieza_seleccionada] = pieza
-    else:
-        texto_modificado = ''
-
-    # Create figure with new configuration, preserving camera
-    nueva_figura = crear_figura(componentes, selected_piece=pieza_seleccionada, current_camera=current_camera)
-
-    if nueva_ayuda is not None:
-        pieza['ayuda'] = nueva_ayuda
-
+    # Fallback if model loading fails
     return (
-        nueva_direccion,
-        nueva_prioridad,
-        nueva_ayuda,
-        texto_modificado,
-        json.dumps(configuracion),
-        nueva_figura,
-        pieza_seleccionada,
-        current_camera
+        {'display': 'block'},
+        {'display': 'none'},
+        go.Figure(),
+        []
     )
+
+# Dummy callback to simulate loading
+@app.callback(
+    Output('loading-output', 'children'),
+    [Input('upload-overlay', 'n_clicks')],
+    prevent_initial_call=True
+)
+def simulate_loading(n_clicks):
+    # Simulating some loading process
+    import time
+    time.sleep(2)  # Simulate a 2-second loading time
+    return "Modelo cargado"
+@app.callback(
+    [Output('pieza-seleccionada-store', 'data'),
+     Output('dropdown-pieza', 'value'),
+     Output('direccion-pieza', 'value'),
+     Output('prioridad-pieza', 'value'),
+     Output('ayuda-pieza', 'value')],
+    [Input('modelo-3d', 'clickData')],
+    [State('dropdown-pieza', 'options')]
+)
+def seleccionar_pieza(clickData, piece_options):
+    if not clickData:
+        return None, None, None, None, ''
+
+    # Obtener el índice de la pieza seleccionada
+    punto_seleccionado = clickData['points'][0]
+    indice_pieza = punto_seleccionado.get('curveNumber', None)
+
+    if indice_pieza is not None:
+        # Configurar los valores de los campos basados en la pieza seleccionada
+        return (
+            indice_pieza,  # Guardar en store
+            indice_pieza,  # Valor del dropdown
+            direcciones[indice_pieza % len(direcciones)],  # Dirección por defecto
+            indice_pieza,  # Prioridad inicial
+            f'Configuración para Pieza {indice_pieza + 1}'  # Texto de ayuda inicial
+        )
+
+    return None, None, None, None, ''
+
+@app.callback(
+    [Output('configuracion-store', 'data'),
+     Output('texto-modificado', 'children')],
+    [Input('guardar-configuracion', 'n_clicks')],
+    [State('pieza-seleccionada-store', 'data'),
+     State('direccion-pieza', 'value'),
+     State('prioridad-pieza', 'value'),
+     State('ayuda-pieza', 'value')]
+)
+def guardar_configuracion(n_clicks, pieza_seleccionada, direccion, prioridad, ayuda):
+    if not n_clicks or pieza_seleccionada is None:
+        return None, ''
+
+    configuracion = {
+        'pieza': pieza_seleccionada,
+        'direccion': direccion,
+        'prioridad': prioridad,
+        'ayuda': ayuda
+    }
+
+    return configuracion, f'Configuración guardada para Pieza {pieza_seleccionada + 1}'
+
 
 # Callback to generate export JSON
 @app.callback(
@@ -436,6 +388,7 @@ def actualizar_panel_pieza(pieza_seleccionada, nueva_direccion, nueva_prioridad,
     prevent_initial_call=True,
     allow_duplicate=True
 )
+#Samuel
 def generar_json(n_clicks, config_data, stl_components_data):
     try:
         if n_clicks and config_data and stl_components_data:
@@ -448,7 +401,7 @@ def generar_json(n_clicks, config_data, stl_components_data):
 
             config = json.loads(config_data)
 
-            # Calculate model's bounding box
+            # Calcular dimensiones del modelo
             all_vertices = np.concatenate([comp.vertices for comp in componentes])
             bbox_min = np.min(all_vertices, axis=0)
             bbox_max = np.max(all_vertices, axis=0)
@@ -486,15 +439,23 @@ def generar_json(n_clicks, config_data, stl_components_data):
                 }
                 configuracion_unity["scene_configuration"]["pieces"].append(piece_config)
 
-            # Convert configuration to JSON
+            # Convertir configuración a JSON
             json_str = json.dumps(configuracion_unity, separators=(',', ':'), ensure_ascii=False)
-            return dict(content=json_str, filename="configuracion_unity.json")
-    except Exception as e:
-        print(f"Error generating JSON: {e}")
-    return dash.no_update
 
-# Stylesheets
-app.layout.className = 'container'
+            # Guardar en Firebase
+            firebase_instance = FirebaseAppSingleton()
+            db = firestore.client(app=firebase_instance.app)
+            db.collection("3DModels").add({
+                "model": configuracion_unity
+            })
+
+
+        return dict(content=json_str, filename="configuracion_unity.json")
+    except Exception as e:
+        import logging
+        logging.error(f"Error generating JSON: {e}")
+    return None
+
 
 # Main
 if __name__ == '__main__':

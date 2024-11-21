@@ -132,7 +132,7 @@ app.index_string = '''
 
 app.layout = html.Div([
     html.Div([
-        html.H1("Generador de Modelo 3D", className="text-center mb-4"),
+        html.H1("Modelo 3D", className="text-center mb-4"),
         html.Div([
             html.Button('⬅️ Anterior',
                         id='btn-pieza-anterior',
