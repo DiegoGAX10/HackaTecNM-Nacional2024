@@ -1,0 +1,1 @@
+Para la pieza con prioridad 1, la dirección indicada es "de abajo hacia arriba". Además, se destaca que se trata de una pieza frágil.
