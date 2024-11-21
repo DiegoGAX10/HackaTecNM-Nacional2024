@@ -1,12 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
+import * as Speech from 'expo-speech';
 
 const XploitScreen = ({ navigation }) => {
+    useEffect(() => {
+        // Reproducir un mensaje al cargar la pantalla
+        Speech.speak("Generando modelo 3D");
+    }, []);
+
     return (
         <View style={styles.container}>
             <WebView
                 source={{ uri: 'http://10.186.8.85:8050/' }}
+                //source={{ uri: 'http://172.20.10.2:8050/' }}
                 style={styles.webview}
                 originWhitelist={['*']}
                 javaScriptEnabled
@@ -24,9 +31,6 @@ const styles = StyleSheet.create({
     webview: {
         flex: 1,
         marginTop: 60,
-        // Ensure that all style properties have valid values
-        // For example, if you had a property like fontSize: 'large', replace it with a valid value
-        // fontSize: 'large' -> fontSize: 20
     },
 });
 
