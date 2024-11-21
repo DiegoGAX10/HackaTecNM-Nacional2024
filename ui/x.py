@@ -90,6 +90,14 @@ app = dash.Dash(__name__, external_stylesheets=[
     'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css'
 ])
 
+def cargar_analisis():
+    try:
+        with open('analisis_piezas_con_notas.txt', 'r') as file:
+            return file.read()
+    except FileNotFoundError:
+        return "No se encontró el análisis12561."
+
+
 # Configuración meta para mejorar la vista en móviles
 app.index_string = '''
 <!DOCTYPE html>
@@ -132,7 +140,7 @@ app.index_string = '''
 
 app.layout = html.Div([
     html.Div([
-        html.H1("Modelo 3D", className="text-center mb-4"),
+        html.H1("Generador de Modelo 3D", className="text-center mb-4"),
         html.Div([
             html.Button('⬅️ Anterior',
                         id='btn-pieza-anterior',
@@ -165,8 +173,23 @@ app.layout = html.Div([
             },
             style={'height': '70vh'}  # Altura relativa al viewport
         )
+    ], className="container"),
+
+    html.Div([
+        html.H3("Análisis de Piezas con Notas", className="text-center mt-5"),
+        html.Pre(id='reporte-analisis', className="text-start p-3 border rounded bg-light")
     ], className="container")
 ], style={'touchAction': 'manipulation'})
+
+
+@app.callback(
+    Output('reporte-analisis', 'children'),
+    [Input('btn-modelo-completo', 'n_clicks')]
+)
+def mostrar_analisis(n_completo):
+    # Cargar el análisis cada vez que se pulse el botón "Modelo Completo"
+    return cargar_analisis()
+
 
 @app.callback(
     [Output('grafica-3d', 'figure'),
@@ -229,4 +252,5 @@ def actualizar_modelo(n_siguiente, n_anterior, n_completo):
     return fig, mensaje
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='172.20.10.2', port=8050)
+    #app.run_server(debug=True, host='172.20.10.2', port=8050)
+    app.run_server(debug=True, host='127.0.0.1', port=8050)
