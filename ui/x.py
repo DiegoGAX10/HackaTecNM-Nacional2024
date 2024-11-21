@@ -229,4 +229,4 @@ def actualizar_modelo(n_siguiente, n_anterior, n_completo):
     return fig, mensaje
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='127.0.0.1', port=8050)
+    app.run_server(debug=True, host='172.20.10.2', port=8050)

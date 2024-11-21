@@ -6,8 +6,6 @@ import json
 import numpy as np
 import base64
 import io
-import FirebaseAppSingleton
-from firebase_admin import firestore
 
 # Colors for pieces
 colores = [
@@ -438,7 +436,6 @@ def actualizar_panel_pieza(pieza_seleccionada, nueva_direccion, nueva_prioridad,
     prevent_initial_call=True,
     allow_duplicate=True
 )
-#Samuel
 def generar_json(n_clicks, config_data, stl_components_data):
     try:
         if n_clicks and config_data and stl_components_data:
@@ -451,7 +448,7 @@ def generar_json(n_clicks, config_data, stl_components_data):
 
             config = json.loads(config_data)
 
-            # Calcular dimensiones del modelo
+            # Calculate model's bounding box
             all_vertices = np.concatenate([comp.vertices for comp in componentes])
             bbox_min = np.min(all_vertices, axis=0)
             bbox_max = np.max(all_vertices, axis=0)
@@ -489,22 +486,12 @@ def generar_json(n_clicks, config_data, stl_components_data):
                 }
                 configuracion_unity["scene_configuration"]["pieces"].append(piece_config)
 
-            # Convertir configuración a JSON
+            # Convert configuration to JSON
             json_str = json.dumps(configuracion_unity, separators=(',', ':'), ensure_ascii=False)
-
-            # Guardar en Firebase
-            firebase_instance = FirebaseAppSingleton()
-            db = firestore.client(app=firebase_instance.app)
-            db.collection("3DModels").add({
-                "model": configuracion_unity
-            })
-
-
-        return dict(content=json_str, filename="configuracion_unity.json")
+            return dict(content=json_str, filename="configuracion_unity.json")
     except Exception as e:
-        import logging
-        logging.error(f"Error generating JSON: {e}")
-    return None
+        print(f"Error generating JSON: {e}")
+    return dash.no_update
 
 # Stylesheets
 app.layout.className = 'container'
