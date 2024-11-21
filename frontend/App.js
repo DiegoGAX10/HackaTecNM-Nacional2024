@@ -6,6 +6,7 @@ import XploitScreen from "./Interfaces/XploitScreen";
 import MainScreen from "./Interfaces/MainScreen";
 import QRScreen from "./Interfaces/QRScreen";
 import ModelosScreen from "./Interfaces/ModelosScreen";
+import CompatibilidadScreen from "./Interfaces/CompatibilidadScreen";
 
 
 const Stack = createStackNavigator();
@@ -23,6 +24,7 @@ export default function App() {
                 <Stack.Screen name="Xploit" component={XploitScreen} />
                 <Stack.Screen name="QR" component={QRScreen}/>
                 <Stack.Screen name="Modelos" component={ModelosScreen}/>
+                <Stack.Screen name="Compatibilidad" component={CompatibilidadScreen}/>
 
             </Stack.Navigator>
         </NavigationContainer>

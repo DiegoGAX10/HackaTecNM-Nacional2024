@@ -11,8 +11,8 @@ const QRScanner = ({ navigation }) => {
             await Linking.openURL(url);
         } else {
             Alert.alert(
-                'Application not installed',
-                'The Unity application is not installed or the URL scheme is not configured correctly.',
+                '',
+                'Error al abrir',
                 [{ text: 'OK' }]
             );
         }
