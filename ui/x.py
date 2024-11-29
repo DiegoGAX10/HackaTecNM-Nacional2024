@@ -3,7 +3,7 @@ from dash import dcc, html, Input, Output, State
 import plotly.graph_objs as go
 import numpy as np
 import json
-import time
+import os
 
 def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
@@ -86,111 +86,115 @@ json_file_path = 'configuracion_unity25.json'
 json_data = cargar_json_desde_archivo(json_file_path)
 modelo_generador = ModeloGenerador(json_data)
 
+# Inicializar la aplicación Dash
 app = dash.Dash(__name__, external_stylesheets=[
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css'
+    'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css',
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css'
 ])
 
-def cargar_analisis():
-    try:
-        with open('analisis_piezas_con_notas.txt', 'r') as file:
-            return file.read()
-    except FileNotFoundError:
-        return "No se encontró el análisis12561."
-
-
-# Configuración meta para mejorar la vista en móviles
-app.index_string = '''
-<!DOCTYPE html>
-<html>
-    <head>
-        {%metas%}
-        <title>{%title%}</title>
-        {%favicon%}
-        {%css%}
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-        <style>
-            body {
-                touch-action: manipulation;  /* Prevenir doble tap zoom */
-            }
-            .btn-mobile {
-                font-size: 14px;
-                padding: 8px 12px;
-                margin: 5px;
-            }
-            @media (max-width: 600px) {
-                .container {
-                    padding: 10px;
-                }
-                #grafica-3d {
-                    height: 400px;  /* Altura fija para móviles */
-                }
-            }
-        </style>
-    </head>
-    <body>
-        {%app_entry%}
-        <footer>
-            {%config%}
-            {%scripts%}
-            {%renderer%}
-        </footer>
-    </body>
-</html>
-'''
-
+# Diseño de la aplicación
 app.layout = html.Div([
+    # Encabezado con gradiente
     html.Div([
-        html.H1("Generador de Modelo 3D", className="text-center mb-4"),
         html.Div([
-            html.Button('⬅️ Anterior',
-                        id='btn-pieza-anterior',
-                        n_clicks=0,
-                        className='btn btn-primary btn-mobile'),
-            html.Button('Siguiente ➡️',
-                        id='btn-pieza-siguiente',
-                        n_clicks=0,
-                        className='btn btn-primary btn-mobile'),
-            html.Button('🔄 Modelo Completo',
-                        id='btn-modelo-completo',
-                        n_clicks=0,
-                        className='btn btn-success btn-mobile')
-        ], className="d-flex justify-content-center mb-3"),
-        html.Div(id='contador-piezas',
-                 children='Piezas generadas: 0',
-                 className="text-center mb-3"),
-        dcc.Graph(
-            id='grafica-3d',
-            config={'responsive': True},  # Hace que la gráfica sea responsiva
-            figure={
-                'layout': {
-                    'title': "Modelo 3D",
-                    'scene': {
-                        'xaxis_title': 'X',
-                        'yaxis_title': 'Y',
-                        'zaxis_title': 'Z'
-                    }
-                }
-            },
-            style={'height': '70vh'}  # Altura relativa al viewport
-        )
-    ], className="container"),
+            # Botón de retroceso
+            html.Button([
+                html.I(className="fas fa-arrow-left", style={'color': 'white', 'fontSize': 24}),
+            ], id='btn-regresar', style={
+                'background': 'none',
+                'border': 'none',
+                'padding': '10px'
+            }),
+
+            # Título centrado
+            html.H1("Generador de Modelo 3D", style={
+                'color': 'white',
+                'fontSize': '1.5rem',
+                'fontWeight': 'bold',
+                'margin': '0 auto',
+                'position': 'absolute',
+                'left': '50%',
+                'transform': 'translateX(-50%)'
+            }),
+        ], style={
+            'display': 'flex',
+            'alignItems': 'center',
+            'position': 'relative',
+            'background': 'linear-gradient(to right, #1a237e, #0d47a1)',
+            'padding': '15px',
+            'paddingTop': '40px'
+        })
+    ]),
+
+    # Contenedor principal
+    html.Div([
+        html.Div([
+            # Controles de navegación
+            html.Div([
+                html.Div([
+                    html.Button('⬅️ Anterior',
+                                id='btn-pieza-anterior',
+                                n_clicks=0,
+                                className='btn btn-light w-100 mb-2',
+                                style={'fontSize': '0.9rem'}),
+                    html.Button('Siguiente ➡️',
+                                id='btn-pieza-siguiente',
+                                n_clicks=0,
+                                className='btn btn-light w-100 mb-2',
+                                style={'fontSize': '0.9rem'}),
+                    html.Button('🔄 Modelo Completo',
+                                id='btn-modelo-completo',
+                                n_clicks=0,
+                                className='btn btn-primary w-100',
+                                style={'fontSize': '0.9rem'})
+                ], className='d-grid gap-2')
+            ], className='card p-3 mb-3 shadow-sm'),
+
+            # Contador de piezas
+            html.Div(
+                id='contador-piezas',
+                className='text-center alert alert-info',
+                children='Piezas generadas: 0',
+                style={'fontSize': '0.9rem'}
+            ),
+
+
+            # Gráfica 3D
+            html.Div([
+                dcc.Graph(
+                    id='grafica-3d',
+                    config={'responsive': True},
+                    style={'height': '50vh'}
+                )
+            ], className='card p-2 shadow-sm')
+        ], className='container')
+    ], style={'backgroundColor': '#f8f9fa', 'minHeight': '100vh', 'padding': '20px'}),
 
     html.Div([
-        html.H3("Análisis de Piezas con Notas", className="text-center mt-5"),
-        html.Pre(id='reporte-analisis', className="text-start p-3 border rounded bg-light")
-    ], className="container")
-], style={'touchAction': 'manipulation'})
-
+        html.Div([
+            html.H4("Notas del Modelo", className='card-header'),
+            html.Div(id='notas-modelo', className='card-body')
+        ], className='card mb-3')
+    ], className='container')
+])
 
 @app.callback(
-    Output('reporte-analisis', 'children'),
-    [Input('btn-modelo-completo', 'n_clicks')]
+    Output('notas-modelo', 'children'),
+    [Input('btn-pieza-siguiente', 'n_clicks'),
+     Input('btn-pieza-anterior', 'n_clicks'),
+     Input('btn-modelo-completo', 'n_clicks')]
 )
-def mostrar_analisis(n_completo):
-    # Cargar el análisis cada vez que se pulse el botón "Modelo Completo"
-    return cargar_analisis()
+def actualizar_notas(n_siguiente, n_anterior, n_completo):
+    # Cargar notas desde el archivo de texto
+    notas = cargar_notas_desde_txt()
 
+    # Convertir notas a lista de elementos HTML
+    nota_elementos = [
+        html.P(nota, className='mb-2') for nota in notas
+    ]
 
+    return nota_elementos
+# Callback para actualizar el modelo 3D
 @app.callback(
     [Output('grafica-3d', 'figure'),
      Output('contador-piezas', 'children')],
@@ -244,13 +248,39 @@ def actualizar_modelo(n_siguiente, n_anterior, n_completo):
         ),
         margin=dict(l=0, r=0, b=0, t=0),
         autosize=True,
-        paper_bgcolor='white',  # Fondo transparente
-        plot_bgcolor='white',  # Fondo transparente
+        paper_bgcolor='white',
+        plot_bgcolor='white',
         showlegend=False,
     )
 
     return fig, mensaje
 
+def cargar_json_desde_archivo(ruta_archivo):
+    with open(ruta_archivo, 'r') as archivo:
+        return archivo.read()
+
+# Nueva función para cargar notas desde un archivo .txt
+def cargar_notas_desde_txt(ruta_archivo='analisis_piezas_con_notas.txt'):
+    if os.path.exists(ruta_archivo):
+        with open(ruta_archivo, 'r', encoding='utf-8') as archivo:
+            # Leer cada línea como una nota
+            notas = archivo.readlines()
+        return [linea.strip() for linea in notas if linea.strip()]
+    else:
+        # Si no existe, retornar notas predeterminadas
+        return ["Nota predeterminada 1.", "Nota predeterminada 2."]
+
+# Callback para el botón de retroceso (opcional)
+@app.callback(
+    Output('btn-regresar', 'n_clicks'),
+    [Input('btn-regresar', 'n_clicks')]
+)
+def regresar_a_main(n_clicks):
+    # Puedes personalizar la lógica de retroceso aquí
+    if n_clicks and n_clicks > 0:
+        print("Botón de retroceso presionado")
+        return 0
+    return 0
+
 if __name__ == '__main__':
-    #app.run_server(debug=True, host='172.20.10.2', port=8050)
-    app.run_server(debug=True, host='127.0.0.1', port=8050)
+    app.run_server(debug=True, host='10.186.8.85', port=8050)

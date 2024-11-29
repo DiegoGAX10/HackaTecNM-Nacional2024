@@ -145,7 +145,7 @@ const SignUp = ({ navigation }) => {
                         />
                         <TextInput
                             style={styles.input}
-                            placeholder="Número de Control"
+                            placeholder="Número de Operador"
                             placeholderTextColor="#666"
                             value={control_number}
                             onChangeText={handleControlNumberChange}

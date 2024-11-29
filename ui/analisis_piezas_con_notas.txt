@@ -1,0 +1,7 @@
+Número de piezas con notas: 2
+
+Análisis de Piezas con Notas:
+
+1. La pieza con ID P001 tiene una prioridad Alta. La dirección indicada para esta pieza es Izquierda. El texto de ayuda indica que esta pieza debe ser ensamblada antes de colocar la pieza base, lo que sugiere que es esencial para la correcta disposición de otros componentes.
+
+2. La pieza con ID P002 tiene una prioridad Media. La dirección indicada es Derecha. El texto de ayuda destaca que es necesario asegurarse de que todos los tornillos estén bien apretados para evitar cualquier tipo de movimiento, lo que refleja la importancia de un ensamblaje preciso para la estabilidad del sistema.

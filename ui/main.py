@@ -278,9 +278,69 @@ app.layout = html.Div(style={
             dcc.Store(id='stl-components-store'),
             dcc.Store(id='pieza-seleccionada-store', data=None),
             dcc.Store(id='configuracion-store', data=None),
-            dcc.Download(id="download-json")
+            dcc.Download(id="download-json"),
+
+            html.Div(
+                html.Img(
+                    id='qr-image',
+                    src='assets/qr.jpeg',  # Reemplaza con la ruta de tu imagen de QR
+                    style={
+                        'maxWidth': '200px',
+                        'display': 'block',
+                        'margin': '20px auto'
+                    }
+                ),
+                style={'textAlign': 'center'}
+            ),
+
+            html.Button(
+                "Download QR Code",
+                id='download-qr-button',
+                style={
+                    'width': '250px',
+                    'padding': '12px',
+                    'backgroundColor': COLORS['secondary'],
+                    'color': 'white',
+                    'border': 'none',
+                    'borderRadius': '8px',
+                    'fontWeight': '600',
+                    'cursor': 'pointer',
+                    'margin': '20px auto',
+                    'display': 'block'
+                }
+            ),
+            dcc.Download(id="download-qr-file"),
+
         ])
     ])
+
+from dash.dcc import send_file
+
+@app.callback(
+    Output("download-qr-file", "data"),
+    [Input("download-qr-button", "n_clicks")],
+    prevent_initial_call=True
+)
+def descargar_qr(n_clicks):
+    # Ruta del archivo QR
+    qr_path = "assets/qr.jpeg"  # Cambia la ruta si es necesario
+
+    # Usar send_file para enviar el archivo como respuesta
+    return send_file(qr_path)
+
+
+@app.callback(
+    Output('qr-image', 'style'),
+    [Input('generar-json', 'n_clicks')]
+)
+def mostrar_qr(n_clicks):
+    if n_clicks and n_clicks > 0:
+        return {
+            'maxWidth': '200px',
+            'display': 'block',
+            'margin': '20px auto'
+        }
+    return {'display': 'none'}
 
 @app.callback(
     [Output('upload-simulation-container', 'style'),
@@ -390,70 +450,70 @@ def guardar_configuracion(n_clicks, pieza_seleccionada, direccion, prioridad, ay
 )
 #Samuel
 def generar_json(n_clicks, config_data, stl_components_data):
-    try:
-        if n_clicks and config_data and stl_components_data:
-            # Cargar componentes
-            componentes_vertices = json.loads(stl_components_data)
-            componentes = [
-                trimesh.Trimesh(vertices=np.array(comp_vertices))
-                for comp_vertices in componentes_vertices
-            ]
-
-            config = json.loads(config_data)
-
-            # Calcular dimensiones del modelo
-            all_vertices = np.concatenate([comp.vertices for comp in componentes])
-            bbox_min = np.min(all_vertices, axis=0)
-            bbox_max = np.max(all_vertices, axis=0)
-            model_dimensions = bbox_max - bbox_min
-
-            configuracion_unity = {
-                "scene_configuration": {
-                    "total_pieces": len(componentes),
-                    "pieces": []
-                }
-            }
-
-            for pieza in config:
-                piece_config = {
-                    "id": pieza["id"],
-                    "direction": pieza.get('direccion', 'de abajo hacia arriba'),
-                    "position": {
-                        "x": componentes[pieza['id']].vertices[:, 0].tolist(),
-                        "y": componentes[pieza['id']].vertices[:, 1].tolist(),
-                        "z": componentes[pieza['id']].vertices[:, 2].tolist()
-                    },
-                    "rotation": {
-                        "x": pieza['coordenadas_finales']['rotacion_x'],
-                        "y": pieza['coordenadas_finales']['rotacion_y'],
-                        "z": pieza['coordenadas_finales']['rotacion_z']
-                    },
-                    "color": pieza["color"],
-                    "enabled": pieza["habilitado"],
-                    "mesh": {
-                        "vertices": componentes[pieza['id']].vertices.tolist(),
-                        "faces": componentes[pieza['id']].faces.tolist()
-                    },
-                    "priority": pieza['prioridad'],
-                    "help_text": pieza.get('ayuda', ''),
-                }
-                configuracion_unity["scene_configuration"]["pieces"].append(piece_config)
-
-            # Convertir configuración a JSON
-            json_str = json.dumps(configuracion_unity, separators=(',', ':'), ensure_ascii=False)
-
-            # Guardar en Firebase
-            firebase_instance = FirebaseAppSingleton()
-            db = firestore.client(app=firebase_instance.app)
-            db.collection("3DModels").add({
-                "model": configuracion_unity
-            })
-
-
-        return dict(content=json_str, filename="configuracion_unity.json")
-    except Exception as e:
-        import logging
-        logging.error(f"Error generating JSON: {e}")
+    # try:
+    #     if n_clicks and config_data and stl_components_data:
+    #         # Cargar componentes
+    #         componentes_vertices = json.loads(stl_components_data)
+    #         componentes = [
+    #             trimesh.Trimesh(vertices=np.array(comp_vertices))
+    #             for comp_vertices in componentes_vertices
+    #         ]
+    #
+    #         config = json.loads(config_data)
+    #
+    #         # Calcular dimensiones del modelo
+    #         all_vertices = np.concatenate([comp.vertices for comp in componentes])
+    #         bbox_min = np.min(all_vertices, axis=0)
+    #         bbox_max = np.max(all_vertices, axis=0)
+    #         model_dimensions = bbox_max - bbox_min
+    #
+    #         configuracion_unity = {
+    #             "scene_configuration": {
+    #                 "total_pieces": len(componentes),
+    #                 "pieces": []
+    #             }
+    #         }
+    #
+    #         for pieza in config:
+    #             piece_config = {
+    #                 "id": pieza["id"],
+    #                 "direction": pieza.get('direccion', 'de abajo hacia arriba'),
+    #                 "position": {
+    #                     "x": componentes[pieza['id']].vertices[:, 0].tolist(),
+    #                     "y": componentes[pieza['id']].vertices[:, 1].tolist(),
+    #                     "z": componentes[pieza['id']].vertices[:, 2].tolist()
+    #                 },
+    #                 "rotation": {
+    #                     "x": pieza['coordenadas_finales']['rotacion_x'],
+    #                     "y": pieza['coordenadas_finales']['rotacion_y'],
+    #                     "z": pieza['coordenadas_finales']['rotacion_z']
+    #                 },
+    #                 "color": pieza["color"],
+    #                 "enabled": pieza["habilitado"],
+    #                 "mesh": {
+    #                     "vertices": componentes[pieza['id']].vertices.tolist(),
+    #                     "faces": componentes[pieza['id']].faces.tolist()
+    #                 },
+    #                 "priority": pieza['prioridad'],
+    #                 "help_text": pieza.get('ayuda', ''),
+    #             }
+    #             configuracion_unity["scene_configuration"]["pieces"].append(piece_config)
+    #
+    #         # Convertir configuración a JSON
+    #         json_str = json.dumps(configuracion_unity, separators=(',', ':'), ensure_ascii=False)
+    #
+    #         # Guardar en Firebase
+    #         firebase_instance = FirebaseAppSingleton()
+    #         db = firestore.client(app=firebase_instance.app)
+    #         db.collection("3DModels").add({
+    #             "model": configuracion_unity
+    #         })
+    #
+    #
+    #     return dict(content=json_str, filename="configuracion_unity.json")
+    # except Exception as e:
+    #     import logging
+    #     logging.error(f"Error generating JSON: {e}")
     return None
 
 

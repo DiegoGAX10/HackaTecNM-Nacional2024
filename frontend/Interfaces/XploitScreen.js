@@ -9,11 +9,12 @@ const XploitScreen = ({ navigation }) => {
         Speech.speak("Generando modelo 3D");
     }, []);
 
+
+
     return (
         <View style={styles.container}>
             <WebView
                 source={{ uri: 'http://10.186.8.85:8050/' }}
-                //source={{ uri: 'http://172.20.10.2:8050/' }}
                 style={styles.webview}
                 originWhitelist={['*']}
                 javaScriptEnabled
